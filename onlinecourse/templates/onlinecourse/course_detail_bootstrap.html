@@ -51,6 +51,49 @@
                 {% endfor %}
             </div>
             <!-- Task: show questions and choices -->
+             <!-- Task: show questions and choices -->
+{% if user.is_authenticated %}
+    <button type="button" class="btn btn-info btn-block mt-3" data-toggle="collapse" data-target="#exam">
+        Take Exam
+    </button>
+
+    <div id="exam" class="collapse mt-3">
+        <form id="questionform"
+              action="{% url 'onlinecourse:submit' course.id %}"
+              method="post">
+
+            {% csrf_token %}
+
+            {% for lesson in course.lesson_set.all %}
+                {% for question in lesson.question_set.all %}
+                    <div class="card mt-2">
+                        <div class="card-header">
+                            <h5>{{ question.question }}</h5>
+                        </div>
+
+                        <div class="card-body">
+                            {% for choice in question.choice_set.all %}
+                                <div class="form-check">
+                                    <label class="form-check-label">
+                                        <input type="checkbox"
+                                               name="choice_{{ choice.id }}"
+                                               class="form-check-input"
+                                               value="{{ choice.id }}">
+                                        {{ choice.choice }}
+                                    </label>
+                                </div>
+                            {% endfor %}
+                        </div>
+                    </div>
+                {% endfor %}
+            {% endfor %}
+
+            <input class="btn btn-success btn-block mt-3"
+                   type="submit"
+                   value="Submit">
+        </form>
+    </div>
+{% endif %}
             <!-- <HINT> Use Bootstrap Collapse to hide exam first, more details could be found here
             https://www.w3schools.com/bootstrap4/bootstrap_collapse.asp-->
 
@@ -97,6 +140,8 @@
 
             <!--Check here to see more details Bootstrap checkbox
              https://www.w3schools.com/bootstrap4/bootstrap_forms_inputs.asp-->
+
+             
     </div>
 </body>
 </html>

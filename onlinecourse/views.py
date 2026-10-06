@@ -1,7 +1,7 @@
 from django.shortcuts import render
 from django.http import HttpResponseRedirect
 # <HINT> Import any new Models here
-from .models import Course, Enrollment
+from .models import Course, Enrollment, Question, Choice, Submission
 from django.contrib.auth.models import User
 from django.shortcuts import get_object_or_404, render, redirect
 from django.urls import reverse
@@ -134,3 +134,87 @@ def enroll(request, course_id):
 
 
 
+def extract_answers(request):
+    submitted_answers = []
+
+    for key in request.POST:
+        if key.startswith('choice_'):
+            value = request.POST[key]
+            choice_id = int(value)
+            submitted_answers.append(choice_id)
+
+    return submitted_answers
+
+
+def submit(request, course_id):
+    user = request.user
+    course = get_object_or_404(Course, pk=course_id)
+
+    enrollment = get_object_or_404(
+        Enrollment,
+        user=user,
+        course=course
+    )
+
+    submission = Submission.objects.create(
+        enrollment=enrollment
+    )
+
+    selected_ids = extract_answers(request)
+
+    for choice_id in selected_ids:
+        choice = get_object_or_404(Choice, pk=choice_id)
+        submission.choices.add(choice)
+
+    return redirect(
+        'onlinecourse:show_exam_result',
+        course_id=course.id,
+        submission_id=submission.id
+    )
+
+
+def show_exam_result(request, course_id, submission_id):
+    course = get_object_or_404(Course, pk=course_id)
+    submission = get_object_or_404(
+        Submission,
+        pk=submission_id
+    )
+
+    selected_ids = list(
+        submission.choices.values_list('id', flat=True)
+    )
+
+    questions = Question.objects.filter(
+        lesson__course=course
+    )
+
+    total_grade = sum(
+        question.grade
+        for question in questions
+    )
+
+    score = 0
+
+    for question in questions:
+        if question.is_get_score(selected_ids):
+            score += question.grade
+
+    if total_grade > 0:
+        grade = (score / total_grade) * 100
+    else:
+        grade = 0
+
+    context = {
+        'course': course,
+        'submission': submission,
+        'selected_ids': selected_ids,
+        'questions': questions,
+        'score': score,
+        'grade': grade,
+    }
+
+    return render(
+        request,
+        'onlinecourse/exam_result_bootstrap.html',
+        context
+    )
